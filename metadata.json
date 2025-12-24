@@ -1,0 +1,7 @@
+{
+  "name": "UNAB Chatbot de ayuda estudiantil",
+  "description": "Una aplicación que pueda ayudar al estudiante en todos los ámbitos la idea principal es que alumno tenga un apoyo total tanto estudiante como psicológicos.\n\n",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
