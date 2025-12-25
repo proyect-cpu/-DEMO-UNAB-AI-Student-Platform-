@@ -1,27 +1,70 @@
+
 import React, { useState } from 'react';
-import { AppView, UserRole, UserState } from './types';
+import { AppView, UserRole, UserState, ThemeColor, AIMode, Message } from './types';
 import Login from './components/Login';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
+import TeacherDashboard from './components/TeacherDashboard';
 import AIChat from './components/AIChat';
 import Campus from './components/Campus';
 import Wellness from './components/Wellness';
-import { User, Shield } from 'lucide-react';
+import Profile from './components/Profile';
+import Notifications from './components/Notifications';
+
+// Initial Messages for each mode
+const INITIAL_CHATS: Record<AIMode, Message[]> = {
+  [AIMode.TUTOR]: [{
+    id: 'init-tutor', role: 'model', timestamp: new Date(),
+    text: '¡Hola! Soy el Profesor Sócrates. ¿En qué materia necesitas ayuda hoy? (Matemáticas, Física, Programación...)'
+  }],
+  [AIMode.PSYCHOLOGIST]: [{
+    id: 'init-psy', role: 'model', timestamp: new Date(),
+    text: 'Hola, soy Sam. Este es un espacio seguro y confidencial. ¿Cómo te sientes hoy?'
+  }],
+  [AIMode.COACH]: [{
+    id: 'init-coach', role: 'model', timestamp: new Date(),
+    text: 'Soy The Shark. Vamos a optimizar tu carrera. ¿Qué dice tu CV o LinkedIn?'
+  }],
+  [AIMode.BUROCRACY]: [{
+    id: 'init-admin', role: 'model', timestamp: new Date(),
+    text: 'UNAB-Bot Administrativo listo. ¿Consultas sobre CAE, TNE, Toma de Ramos o Justificativos?'
+  }]
+};
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserState | null>(null);
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
+  
+  // GLOBAL CHAT STATE (PERSISTENCE)
+  const [chatHistories, setChatHistories] = useState<Record<AIMode, Message[]>>(INITIAL_CHATS);
+  const [activeAIMode, setActiveAIMode] = useState<AIMode>(AIMode.TUTOR);
 
   const handleLogin = (email: string, role: UserRole) => {
-    // Simulate user data fetching
+    const isTeacher = role === UserRole.TEACHER;
+    
+    // Generate Unique ID
+    const randomId = Math.floor(1000 + Math.random() * 9000);
+    const uniqueId = `U-${new Date().getFullYear()}-${randomId}`;
+
+    // Mock Grades for Students
+    const mockGrades = isTeacher ? undefined : [
+        { subject: 'Cálculo I', score: 5.5, weight: 30, date: '12/03' },
+        { subject: 'Física Mecánica', score: 4.2, weight: 25, date: '15/03' },
+        { subject: 'Programación', score: 6.8, weight: 20, date: '20/03' },
+        { subject: 'Algebra', score: 3.9, weight: 35, date: '22/03' },
+    ];
+
     setUser({
+      id: uniqueId,
       email,
       role,
-      name: email.split('@')[0], // Derive name from email for demo
-      coins: 1250,
-      streak: 14,
+      name: isTeacher ? "Director Académico" : email.split('@')[0], 
+      coins: isTeacher ? 0 : 1250,
+      streak: isTeacher ? 0 : 14,
       stressLevel: 45,
-      dyslexiaMode: false
+      dyslexiaMode: false,
+      themeColor: 'red',
+      grades: mockGrades
     });
     setCurrentView(AppView.DASHBOARD);
   };
@@ -29,78 +72,62 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setUser(null);
     setCurrentView(AppView.LOGIN);
+    setChatHistories(INITIAL_CHATS); 
+    setActiveAIMode(AIMode.TUTOR);
   };
 
-  // Toggle Dyslexia Font Global
-  const toggleDyslexia = () => {
+  const handleUpdateUser = (updates: Partial<UserState>) => {
     if (user) {
-      const newState = !user.dyslexiaMode;
-      setUser({ ...user, dyslexiaMode: newState });
-      if (newState) {
-        document.body.classList.add('font-dyslexic');
-      } else {
-        document.body.classList.remove('font-dyslexic');
-      }
+      setUser({ ...user, ...updates });
     }
+  };
+
+  const handleUpdateChatHistory = (mode: AIMode, newMessages: Message[]) => {
+    setChatHistories(prev => ({
+      ...prev,
+      [mode]: newMessages
+    }));
   };
 
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
+  const themeProps = {
+    primaryColor: user.themeColor
+  };
+
   const renderView = () => {
     switch (currentView) {
       case AppView.DASHBOARD:
-        return <Dashboard user={user} />;
+        if (user.role === UserRole.TEACHER) {
+          return <TeacherDashboard />;
+        }
+        return <Dashboard user={user} {...themeProps} />;
+      
+      case AppView.NOTIFICATIONS:
+        return <Notifications {...themeProps} userRole={user.role} />;
+
       case AppView.AI_CHAT:
-        return <AIChat />;
-      case AppView.CAMPUS:
-        return <Campus />;
-      case AppView.WELLNESS:
-        return <Wellness />;
-      case AppView.PROFILE:
         return (
-          <div className="p-8">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">Perfil y Ajustes</h2>
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-               <div className="flex items-center gap-4 mb-6">
-                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600">
-                   <User className="w-8 h-8" />
-                 </div>
-                 <div>
-                   <h3 className="text-xl font-bold text-slate-800">{user.name}</h3>
-                   <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">{user.role}</span>
-                 </div>
-               </div>
-               
-               <div className="space-y-4">
-                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                   <div>
-                     <span className="font-medium text-slate-800 block">Modo Dislexia (OpenDyslexic)</span>
-                     <span className="text-xs text-slate-500">Mejora la legibilidad de textos.</span>
-                   </div>
-                   <button 
-                    onClick={toggleDyslexia}
-                    className={`w-12 h-6 rounded-full transition-colors relative ${user.dyslexiaMode ? 'bg-red-600' : 'bg-slate-300'}`}
-                   >
-                     <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${user.dyslexiaMode ? 'left-7' : 'left-1'}`} />
-                   </button>
-                 </div>
-                 <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100 flex items-start gap-3">
-                   <Shield className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
-                   <div>
-                     <span className="font-bold text-yellow-800 text-sm block">Seguridad Sentinel Activada</span>
-                     <p className="text-xs text-yellow-700 mt-1">
-                       Todas las interacciones son monitoreadas por nuestro guardián ético para tu seguridad.
-                     </p>
-                   </div>
-                 </div>
-               </div>
-            </div>
-          </div>
+          <AIChat 
+            histories={chatHistories}
+            onUpdateHistory={handleUpdateChatHistory}
+            currentMode={activeAIMode}
+            onModeChange={setActiveAIMode}
+          />
         );
+      case AppView.CAMPUS:
+        return <Campus {...themeProps} />;
+      case AppView.WELLNESS:
+        return (
+          <Wellness {...themeProps} />
+        );
+      case AppView.PROFILE:
+        return <Profile user={user} onUpdateUser={handleUpdateUser} />;
       default:
-        return <Dashboard user={user} />;
+        if (user.role === UserRole.TEACHER) return <TeacherDashboard />;
+        return <Dashboard user={user} {...themeProps} />;
     }
   };
 
@@ -111,6 +138,7 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       userRole={user.role}
       userCoins={user.coins}
+      primaryColor={user.themeColor}
     >
       {renderView()}
     </Layout>
