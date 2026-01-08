@@ -8,7 +8,8 @@ export enum UserRole {
 export enum AppView {
   LOGIN = 'LOGIN',
   DASHBOARD = 'DASHBOARD',
-  NOTIFICATIONS = 'NOTIFICATIONS', // New View
+  NOTIFICATIONS = 'NOTIFICATIONS',
+  MANAGEMENT = 'MANAGEMENT', // New View
   AI_CHAT = 'AI_CHAT',
   WELLNESS = 'WELLNESS',
   CAMPUS = 'CAMPUS',

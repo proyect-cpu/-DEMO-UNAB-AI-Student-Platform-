@@ -1,7 +1,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { UserState, ThemeColor } from '../types';
-import { User, Shield, Camera, Save, Type, Hash, Palette, X, Edit2, Plus, Check, IdCard, QrCode } from 'lucide-react';
+import { UserState, ThemeColor, UserRole } from '../types';
+import { User, Shield, Camera, Save, Type, Hash, Palette, X, Edit2, Plus, Check, IdCard, QrCode, FileText, Folder, Briefcase, Smartphone, Download, Trash2, ExternalLink, BookOpen, GraduationCap, Library, Loader2, AlertCircle } from 'lucide-react';
 
 interface ProfileProps {
   user: UserState;
@@ -16,27 +16,100 @@ const THEME_OPTIONS: { name: string, value: ThemeColor, gradient: string, ring: 
   { name: 'Midnight', value: 'slate', gradient: 'from-slate-900 via-slate-800 to-black', ring: 'ring-slate-500' },
 ];
 
+const INITIAL_FILES = [
+    { id: 1, name: 'Syllabus_Calculo_I.pdf', size: '2.4 MB', date: '12/03/2024' },
+    { id: 2, name: 'Ensayo_Etica.docx', size: '500 KB', date: '15/03/2024' },
+    { id: 3, name: 'Guia_Ejercicios_Fisica.pdf', size: '1.2 MB', date: '10/03/2024' },
+];
+
+const INITIAL_PORTFOLIO = [
+    { id: 1, title: 'App Móvil React Native', subtitle: 'Programación III', tag: '6.8' },
+    { id: 2, title: 'Modelo 3D Motor', subtitle: 'Diseño Mecánico', tag: '7.0' },
+];
+
+const INITIAL_RESEARCH = [
+    { id: 1, title: 'Impacto de la IA Generativa en el Aula', subtitle: 'Paper Q1', tag: '45 Citas' },
+    { id: 2, title: 'Optimización Estocástica Avanzada', subtitle: 'Conferencia', tag: '12 Citas' },
+    { id: 3, title: 'Ingeniería de Software Moderna', subtitle: 'Libro', tag: '150 Citas' },
+];
+
 const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  
   const [isEditing, setIsEditing] = useState(false);
   const [tempNickname, setTempNickname] = useState(user.nickname || user.name);
-  const [tempBio, setTempBio] = useState(user.bio || "Estudiante apasionado | Futuro profesional");
+  const [tempBio, setTempBio] = useState(user.bio || (user.role === UserRole.TEACHER ? "Docente Investigador | Facultad de Ingeniería" : "Estudiante apasionado | Futuro profesional"));
   const [newTag, setNewTag] = useState('');
+  
+  // Local State for interactive lists
+  const [files, setFiles] = useState(INITIAL_FILES);
+  const [items, setItems] = useState(user.role === UserRole.TEACHER ? INITIAL_RESEARCH : INITIAL_PORTFOLIO);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Estado para controlar la animación de cambio de tema
   const [isThemeChanging, setIsThemeChanging] = useState(false);
+  
+  const isTeacher = user.role === UserRole.TEACHER;
 
   useEffect(() => {
     setTempNickname(user.nickname || user.name);
-    setTempBio(user.bio || "Estudiante apasionado | Futuro profesional");
-  }, [user]);
+    setTempBio(user.bio || (isTeacher ? "Docente Investigador | Facultad de Ingeniería" : "Estudiante apasionado | Futuro profesional"));
+  }, [user, isTeacher]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       onUpdateUser({ avatar: imageUrl });
     }
+  };
+
+  // --- DOC UPLOAD LOGIC ---
+  const handleDocUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        setIsUploading(true);
+        // Simulate network delay
+        setTimeout(() => {
+            const newFile = {
+                id: Date.now(),
+                name: file.name,
+                size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+                date: new Date().toLocaleDateString()
+            };
+            setFiles([newFile, ...files]);
+            setIsUploading(false);
+            if (docInputRef.current) docInputRef.current.value = ''; // Reset input
+        }, 1500);
+    }
+  };
+
+  const handleDeleteFile = (id: number) => {
+      if(window.confirm("¿Estás seguro de eliminar este archivo?")) {
+          setFiles(files.filter(f => f.id !== id));
+      }
+  };
+
+  const handleDownloadFile = (name: string) => {
+      alert(`Iniciando descarga de: ${name}`);
+  };
+
+  // --- ADD ITEM LOGIC (Research or Portfolio) ---
+  const handleAddItem = () => {
+      const title = prompt(isTeacher ? "Título de la Publicación:" : "Título del Proyecto:");
+      if (!title) return;
+      
+      const subtitle = prompt(isTeacher ? "Tipo (Paper, Libro, Conferencia):" : "Asignatura:");
+      const tag = prompt(isTeacher ? "Número de Citas:" : "Nota Final:");
+
+      const newItem = {
+          id: Date.now(),
+          title,
+          subtitle: subtitle || 'General',
+          tag: tag || '-'
+      };
+      setItems([newItem, ...items]);
   };
 
   const handleSaveProfile = () => {
@@ -66,18 +139,11 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
     document.body.classList.toggle('font-dyslexic', newState);
   };
 
-  // Manejador de cambio de tema con animación robusta
   const handleThemeChange = (newColor: ThemeColor) => {
-    if (user.themeColor === newColor || isThemeChanging) return; // Prevent spamming
-    
-    // 1. Iniciar Fade Out
+    if (user.themeColor === newColor || isThemeChanging) return;
     setIsThemeChanging(true);
-
-    // 2. Esperar que termine la animación de salida (300ms)
     setTimeout(() => {
         onUpdateUser({ themeColor: newColor });
-        
-        // 3. Pequeño delay para asegurar render y luego Fade In
         setTimeout(() => {
             setIsThemeChanging(false);
         }, 50);
@@ -127,7 +193,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
                      
                      {/* Overlay for uploading */}
                      <div 
-                        onClick={() => fileInputRef.current?.click()} 
+                        onClick={() => avatarInputRef.current?.click()} 
                         className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm"
                      >
                        <Camera className="w-8 h-8 text-white mb-1" />
@@ -135,7 +201,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
                      </div>
                    </div>
                  </div>
-                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                 <input type="file" ref={avatarInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
                  
                  {/* Status Indicator */}
                  <div className="absolute bottom-3 right-1/2 translate-x-12 md:translate-x-16 w-6 h-6 bg-emerald-500 border-4 border-slate-800 rounded-full shadow-lg" title="Estado: Activo"></div>
@@ -181,7 +247,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
                                {user.nickname || user.name}
                            </h3>
                            <p className="text-white/90 text-lg font-medium italic leading-relaxed max-w-lg mx-auto md:mx-0 drop-shadow-md">
-                               "{user.bio || "Estudiante UNAB"}"
+                               "{user.bio || (isTeacher ? "Docente Investigador | Facultad de Ingeniería" : "Estudiante UNAB")}"
                            </p>
                            
                            {/* UNIQUE ID CARD */}
@@ -214,6 +280,103 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
               </div>
            </div>
         </div>
+
+        {/* --- ACADEMIC MANAGEMENT SECTION --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* FILES WIDGET (Dynamic Name) */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-4">
+                <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+                    <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                        <div className="p-2 rounded-lg bg-blue-50 text-blue-600"><Folder className="w-5 h-5" /></div>
+                        {isTeacher ? 'Repositorio Docente' : 'Mochila Digital'}
+                    </h4>
+                    
+                    {/* HIDDEN FILE INPUT */}
+                    <input 
+                        type="file" 
+                        ref={docInputRef} 
+                        className="hidden" 
+                        onChange={handleDocUpload}
+                        disabled={isUploading}
+                    />
+                    
+                    <button 
+                        onClick={() => docInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-slate-800 transition-colors disabled:opacity-50"
+                    >
+                        {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        {isUploading ? 'Subiendo...' : 'Subir'}
+                    </button>
+                </div>
+                <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar">
+                    {files.map((file) => (
+                        <div key={file.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-colors group">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <FileText className="w-8 h-8 text-slate-400 group-hover:text-blue-500 shrink-0" />
+                                <div className="min-w-0">
+                                    <div className="font-bold text-slate-700 text-sm truncate max-w-[150px]">{file.name}</div>
+                                    <div className="text-[10px] text-slate-400">{file.size} • {file.date}</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => handleDownloadFile(file.name)} className="p-1.5 hover:bg-white rounded text-blue-600" title="Descargar"><Download className="w-4 h-4" /></button>
+                                <button onClick={() => handleDeleteFile(file.id)} className="p-1.5 hover:bg-white rounded text-red-500" title="Eliminar"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                        </div>
+                    ))}
+                    {files.length === 0 && (
+                        <div className="text-center py-6 text-slate-400 text-xs italic">
+                            No hay archivos subidos aún.
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* SECOND WIDGET: PORTFOLIO (Student) vs RESEARCH (Teacher) */}
+             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-4">
+                <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+                    <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                        <div className={`p-2 rounded-lg ${isTeacher ? 'bg-teal-50 text-teal-600' : 'bg-purple-50 text-purple-600'}`}>
+                             {isTeacher ? <Library className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
+                        </div>
+                        {isTeacher ? 'Investigación & Publicaciones' : 'e-Portfolio'}
+                    </h4>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isTeacher ? 'ORCID' : 'Público'}</span>
+                </div>
+                <div className="grid gap-3 max-h-64 overflow-y-auto custom-scrollbar">
+                    {items.map((item) => (
+                        <div key={item.id} className={`p-4 rounded-xl border border-slate-100 bg-slate-50 relative overflow-hidden group transition-all ${isTeacher ? 'hover:border-teal-200 hover:bg-teal-50/30' : 'hover:border-purple-200 hover:bg-purple-50'}`}>
+                            <div className="relative z-10 flex justify-between items-start">
+                                <div className="flex-1">
+                                    <h5 className="font-bold text-slate-800 text-sm leading-tight mb-1">{item.title}</h5>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`bg-white px-2 py-0.5 rounded text-[10px] font-bold border shadow-sm ${isTeacher ? 'text-teal-700 border-teal-100' : 'text-purple-700 border-purple-100'}`}>
+                                            {item.subtitle}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500">{isTeacher ? item.tag : `Nota: ${item.tag}`}</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                     <button onClick={() => handleDeleteFile(item.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                                         <Trash2 className="w-4 h-4" />
+                                     </button>
+                                     <ExternalLink className={`w-4 h-4 mt-1 ${isTeacher ? 'text-teal-300' : 'text-purple-300'}`} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    <button 
+                        onClick={handleAddItem}
+                        className={`w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-xs transition-colors flex flex-col items-center justify-center gap-1 ${isTeacher ? 'hover:border-teal-300 hover:text-teal-600 hover:bg-teal-50' : 'hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50'}`}
+                    >
+                        <Plus className="w-5 h-5" />
+                        {isTeacher ? 'Agregar Publicación' : 'Agregar Proyecto Destacado'}
+                    </button>
+                </div>
+             </div>
+        </div>
+
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-32">
            {/* PERSONALIZACIÓN */}
@@ -309,6 +472,18 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
               </div>
               
               <div className="space-y-4">
+                {/* QR Sync (New Feature) */}
+                <div className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-200 hover:border-blue-200 transition-colors group cursor-pointer">
+                   <div className="flex items-center gap-4">
+                       <div className="p-3 bg-white text-blue-600 rounded-xl shadow-sm group-hover:scale-110 transition-transform"><Smartphone className="w-5 h-5" /></div>
+                       <div>
+                           <span className="font-bold text-slate-800 text-sm block">Vincular App Móvil</span>
+                           <span className="text-xs text-slate-500">Escanea el QR para iniciar sesión.</span>
+                       </div>
+                   </div>
+                   <QrCode className="w-6 h-6 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                </div>
+
                 {/* Dyslexia Toggle */}
                 <div className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-200 hover:border-purple-200 transition-colors group">
                    <div className="flex items-center gap-4">

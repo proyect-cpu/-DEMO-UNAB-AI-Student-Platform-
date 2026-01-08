@@ -10,6 +10,7 @@ import Campus from './components/Campus';
 import Wellness from './components/Wellness';
 import Profile from './components/Profile';
 import Notifications from './components/Notifications';
+import UniversityManagement from './components/UniversityManagement';
 
 // Initial Messages for each mode
 const INITIAL_CHATS: Record<AIMode, Message[]> = {
@@ -107,6 +108,9 @@ const App: React.FC = () => {
       
       case AppView.NOTIFICATIONS:
         return <Notifications {...themeProps} userRole={user.role} />;
+      
+      case AppView.MANAGEMENT:
+        return <UniversityManagement user={user} {...themeProps} />;
 
       case AppView.AI_CHAT:
         return (
